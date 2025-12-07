@@ -8,15 +8,22 @@
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- 初期アイコン（後でJSで上書きされます） -->
-    <link rel="apple-touch-icon" id="app-icon" href="" />
+    <!-- 初期アイコン -->
+    <link rel="apple-touch-icon" id="app-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==" />
     
     <style>
-        body { overscroll-behavior-y: contain; }
+        /* スクロール制御 */
+        body { 
+            overscroll-behavior-y: none; /* ネイティブのバウンスを無効化 */
+            background-color: #faf9f6;
+        }
+        
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fadeIn { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        
         @keyframes blob {
             0% { transform: translate(0px, 0px) scale(1); }
             33% { transform: translate(30px, -50px) scale(1.1); }
@@ -26,8 +33,10 @@
         .animate-blob { animation: blob 10s infinite; }
         .animation-delay-2000 { animation-delay: 2s; }
         .animation-delay-4000 { animation-delay: 4s; }
+        
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .animate-spin-fast { animation: spin 0.7s linear infinite; }
+        
         /* Loading Text Animation */
         @keyframes fadeText {
             0% { opacity: 0; transform: translateY(5px); }
@@ -50,33 +59,16 @@
         //  設定
         // ==========================================
         const GAS_API_URL = "https://script.google.com/macros/s/AKfycby7BcugkEngRyjAM5Gkhs_csL0Ei6ngLK7B0KB0u5atQ1vmp-4y6JoeJEDZJAZpN9P0cA/exec"; 
-        const GITHUB_REPO = "nokidochibi/noki-lab"; // GitHubのリポジトリ (ユーザー名/リポジトリ名)
+        const GITHUB_REPO = "nokidochibi/noki-lab";
 
-        // --- Google Drive URL Converter (Super Strong Version) ---
-        // lh3.googleusercontent.com 経由で読み込みつつ、URLの破損(view連結)も自動修復します
+        // --- URL Converter ---
         const convertDriveUrl = (url) => {
             if (!url) return '';
-            // 既に変換済みならそのまま
-            if (url.includes('lh3.googleusercontent.com')) return url;
-            
-            let id = '';
-            
-            // 1. URLからIDらしき部分を抽出 (/file/d/〇〇, /d/〇〇, id=〇〇)
-            const parts = url.split(/\/file\/d\/|\/d\/|id=/);
-            
-            if (parts.length > 1) {
-                // 2. 後ろに続く余計なパラメータ(?や&や/)をカット
-                id = parts[1].split(/[/?&]/)[0];
-                
-                // 3. IDの後ろにスラッシュなしで "view" がくっついている場合 (例: ...MIGview) を切り離す
-                if (id.endsWith('view')) {
-                    id = id.substring(0, id.length - 4);
-                }
-            }
-
-            if (id) {
-                // Googleフォトサーバー経由のURLに変換 (これが強力なやつ)
-                return `https://lh3.googleusercontent.com/d/${id}`;
+            if (url.includes('export=view')) return url;
+            const match = url.match(/\/file\/d\/([^\/]+)/) || url.match(/\/d\/([^\/]+)/) || url.match(/id=([^&]+)/);
+            if (match) {
+                const id = match[1];
+                return `https://drive.google.com/uc?export=view&id=${id}`;
             }
             return url;
         };
@@ -129,8 +121,7 @@
                     <div className="mb-4">
                         <FlaskConical size={32} className="text-rose-400 animate-bounce" />
                     </div>
-                    <div className="h-6 overflow-hidden relative w-full text-center">
-                        {/* Keyを変えることでアニメーションをリセットさせて再実行させる */}
+                    <div className="h-6 overflow-hidden relative w-full text-center px-4">
                         <p key={index} className="text-sm font-medium animate-text-cycle absolute w-full left-0">
                             {messages[index]}
                         </p>
@@ -149,17 +140,17 @@
             const [activeTab, setActiveTab] = useState('');
             const [copied, setCopied] = useState(false);
             
-            // Commit Modal State
+            // Modal
             const [showCommit, setShowCommit] = useState(false);
             const [commitData, setCommitData] = useState(null);
             const [commitLoading, setCommitLoading] = useState(false);
 
-            // Pull to Refresh State
+            // Pull to Refresh
             const [pullStartY, setPullStartY] = useState(0);
             const [pullDistance, setPullDistance] = useState(0);
             const [isRefreshing, setIsRefreshing] = useState(false);
 
-            // --- Fetch Logic ---
+            // --- Logic ---
             const fetchSheetData = async () => {
                 let rawData = mockData;
                 if (GAS_API_URL) {
@@ -200,7 +191,6 @@
             useEffect(() => {
                 const init = async () => {
                     await fetchSheetData();
-                    // ローディング演出を見せたいので少しウェイトを入れる
                     setTimeout(() => setLoading(false), 2000); 
                 };
                 init();
@@ -222,10 +212,15 @@
                     if (isAppSection) { tempApps.push(cleanRow); } else { tempSocials.push(cleanRow); }
                 });
 
-                // プロフィール画像が見つかったら、アプリアイコンとして設定
+                // Web Clip Icon Update
                 if (tempProfile && tempProfile.imageUrl) {
                     const iconLink = document.getElementById('app-icon');
-                    if (iconLink) iconLink.href = tempProfile.imageUrl;
+                    if (iconLink) {
+                        iconLink.href = tempProfile.imageUrl;
+                        // Headに再挿入して反映を促す
+                        document.head.removeChild(iconLink);
+                        document.head.appendChild(iconLink);
+                    }
                 }
 
                 const tempPickups = tempApps.filter(d => String(d.pickup) === '1');
@@ -239,15 +234,17 @@
                 if (!activeTab && uniqueCategories.length > 0) setActiveTab(uniqueCategories[0]);
             };
 
-            // --- Pull to Refresh Handlers ---
-            const handleTouchStart = (e) => { if (window.scrollY === 0 && !isRefreshing) setPullStartY(e.touches[0].clientY); };
+            // --- Pull to Refresh ---
+            const handleTouchStart = (e) => { 
+                if (window.scrollY <= 0) setPullStartY(e.touches[0].clientY); 
+            };
             const handleTouchMove = (e) => {
-                if (pullStartY > 0 && window.scrollY === 0 && !isRefreshing) {
+                if (pullStartY > 0 && window.scrollY <= 0 && !isRefreshing) {
                     const currentY = e.touches[0].clientY;
                     const diff = currentY - pullStartY;
                     if (diff > 0) {
                         setPullDistance(diff * 0.4); 
-                        if (e.cancelable) e.preventDefault();
+                        // Chrome等でのプルリロード無効化はCSSのoverscroll-behaviorで制御
                     }
                 }
             };
@@ -307,17 +304,19 @@
 
             return (
                 <div 
-                    className="min-h-screen bg-[#faf9f6] font-sans text-stone-600 selection:bg-rose-200 selection:text-rose-900"
+                    className="min-h-screen font-sans text-stone-600 selection:bg-rose-200 selection:text-rose-900"
                     onTouchStart={handleTouchStart}
                     onTouchMove={handleTouchMove}
                     onTouchEnd={handleTouchEnd}
                 >
+                    {/* Background */}
                     <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
                         <div className="absolute -top-20 -left-20 w-96 h-96 bg-rose-200/40 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-blob"></div>
                         <div className="absolute top-0 -right-20 w-96 h-96 bg-amber-100/60 rounded-full mix-blend-multiply filter blur-3xl opacity-60 animate-blob animation-delay-2000"></div>
                         <div className="absolute -bottom-32 left-20 w-96 h-96 bg-blue-100/50 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-blob animation-delay-4000"></div>
                     </div>
 
+                    {/* Refresh Indicator */}
                     <div 
                         className="fixed top-0 left-0 right-0 z-[60] flex justify-center pointer-events-none transition-all duration-300 ease-out"
                         style={{ 
@@ -336,8 +335,8 @@
                         className="relative z-10 max-w-md mx-auto min-h-screen flex flex-col pb-6 shadow-xl shadow-stone-200/50 bg-white/40 backdrop-blur-md border-x border-white/50 transition-transform duration-300 ease-out"
                         style={{ transform: `translateY(${pullDistance * 0.3}px)` }} 
                     >
+                        {/* Header */}
                         <header className="sticky top-0 z-50 px-4 flex flex-row items-center gap-3 border-b border-stone-100 bg-white/80 backdrop-blur-xl transition-all h-[56px]">
-                            {/* Profile Icon with Click Event */}
                             <div className="relative group shrink-0 cursor-pointer active:scale-95 transition-transform" onClick={handleProfileClick}>
                                 <div className="absolute -inset-1 bg-gradient-to-tr from-rose-200 to-amber-200 rounded-full opacity-0 group-hover:opacity-100 transition duration-500 blur-[4px]"></div>
                                 <img src={profile.imageUrl} alt={profile.name} className="relative w-9 h-9 rounded-full object-cover ring-2 ring-white shadow-sm" referrerPolicy="no-referrer" />
@@ -348,9 +347,10 @@
                                         <FlaskConical size={14} className="text-rose-400 fill-rose-100" />
                                         <h1 className="text-sm font-bold tracking-wide text-stone-700">のき🌳ラボ</h1>
                                     </div>
-                                    <div className="flex gap-2">
+                                    {/* SNS Links (Fix: Added z-index and click area) */}
+                                    <div className="flex gap-2 relative z-10">
                                         {socials.map((sns, idx) => (
-                                            <a key={idx} href={sns.appUrl} target="_blank" rel="noopener noreferrer" className={`rounded-full transition hover:scale-110 active:scale-95 flex items-center justify-center ${getSocialColor(sns.category)} opacity-90 hover:opacity-100 shadow-sm`} style={{ width: '22px', height: '22px' }}>
+                                            <a key={idx} href={sns.appUrl || '#'} target="_blank" rel="noopener noreferrer" className={`rounded-full transition hover:scale-110 active:scale-95 flex items-center justify-center ${getSocialColor(sns.category)} opacity-90 hover:opacity-100 shadow-sm`} style={{ width: '22px', height: '22px' }}>
                                                 {getSocialIcon(sns.category)}
                                             </a>
                                         ))}
@@ -363,21 +363,23 @@
                             </button>
                         </header>
 
+                        {/* Pickup Section (Design Changed) */}
                         {pickups.length > 0 && (
                             <section className="mt-6 mb-2">
                                 <div className="flex overflow-x-auto px-4 pb-4 gap-4 snap-x snap-mandatory hide-scrollbar">
                                     {pickups.map((app, idx) => (
                                         <a key={idx} href={app.appUrl} target="_blank" rel="noopener noreferrer" className="snap-center shrink-0 w-[70vw] max-w-[280px] group block">
-                                            <div className="relative aspect-[3/4] overflow-hidden rounded-2xl shadow-md shadow-stone-200/50 border border-white bg-white group-hover:shadow-lg transition-all duration-300">
-                                                <img src={app.imageUrl} alt={app.name} className="w-full h-full object-cover transition duration-700 group-hover:scale-105 opacity-95 group-hover:opacity-100" referrerPolicy="no-referrer" />
-                                                <div className="absolute inset-0 bg-gradient-to-t from-stone-900/60 via-transparent to-transparent opacity-80"></div>
+                                            {/* 画像部分 */}
+                                            <div className="relative aspect-[3/4] overflow-hidden rounded-2xl shadow-sm border border-stone-200 bg-white transition-all duration-300 group-hover:shadow-md">
+                                                <img src={app.imageUrl} alt={app.name} className="w-full h-full object-cover transition duration-700 group-hover:scale-105" referrerPolicy="no-referrer" />
                                                 <div className="absolute top-3 left-3">
                                                     <span className="px-2.5 py-1 text-[10px] font-bold text-rose-600 bg-white/90 backdrop-blur-sm rounded-full shadow-sm">PICKUP</span>
                                                 </div>
-                                                <div className="absolute bottom-0 left-0 p-4 w-full">
-                                                    <h3 className="text-lg font-bold text-white leading-tight mb-1 line-clamp-2 group-hover:text-rose-100 transition-colors drop-shadow-sm">{app.name}</h3>
-                                                    <p className="text-xs text-stone-100 line-clamp-1 opacity-90">{app.message}</p>
-                                                </div>
+                                            </div>
+                                            {/* テキスト部分（画像の下に移動） */}
+                                            <div className="pt-2 px-1">
+                                                <h3 className="text-sm font-bold text-stone-700 leading-tight mb-1 line-clamp-1 group-hover:text-rose-500 transition-colors">{app.name}</h3>
+                                                <p className="text-[10px] text-stone-400 line-clamp-1">{app.message}</p>
                                             </div>
                                         </a>
                                     ))}
@@ -385,6 +387,7 @@
                             </section>
                         )}
 
+                        {/* App List */}
                         <section className="px-4 flex-1 flex flex-col">
                             <div className="sticky top-[56px] z-40 bg-[#faf9f6]/95 backdrop-blur-xl -mx-4 px-4 py-3 mb-4 border-b border-stone-100/50">
                                 <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar">
@@ -399,7 +402,7 @@
                             <div className="grid grid-cols-2 gap-4 pb-12">
                                 {displayedApps.map((app, idx) => (
                                     <a key={`${activeTab}-${idx}`} href={app.appUrl} target="_blank" rel="noopener noreferrer" className="group relative flex flex-col bg-white rounded-xl overflow-hidden border border-stone-100 shadow-sm hover:shadow-md hover:border-rose-200 transition-all duration-300 active:scale-95 animate-fadeIn">
-                                        <div className="aspect-[16/9] w-full overflow-hidden bg-stone-100 relative">
+                                        <div className="aspect-[16/9] w-full overflow-hidden bg-stone-100 relative border-b border-stone-100">
                                             <img src={app.imageUrl} alt={app.name} className="w-full h-full object-cover transition duration-500 group-hover:scale-105" referrerPolicy="no-referrer" />
                                             <div className="absolute inset-0 bg-rose-500/0 group-hover:bg-rose-500/10 transition duration-300"></div>
                                         </div>
@@ -418,7 +421,7 @@
                         
                         <footer className="mt-auto text-center text-[10px] text-stone-400 pb-8 pt-12"><p>© {new Date().getFullYear()} NOKI LAB</p></footer>
                     
-                        {/* --- Commit Log Modal --- */}
+                        {/* Commit Modal */}
                         {showCommit && (
                             <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 animate-fadeIn">
                                 <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setShowCommit(false)}></div>
