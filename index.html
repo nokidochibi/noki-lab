@@ -61,14 +61,31 @@
         const GAS_API_URL = "https://script.google.com/macros/s/AKfycby7BcugkEngRyjAM5Gkhs_csL0Ei6ngLK7B0KB0u5atQ1vmp-4y6JoeJEDZJAZpN9P0cA/exec"; 
         const GITHUB_REPO = "nokidochibi/noki-lab";
 
-        // --- URL Converter ---
+        // --- URL Converter (Thumbnail API Version) ---
+        // サムネイル生成APIを使用することで、最も安定して画像を表示させます
         const convertDriveUrl = (url) => {
             if (!url) return '';
-            if (url.includes('export=view')) return url;
-            const match = url.match(/\/file\/d\/([^\/]+)/) || url.match(/\/d\/([^\/]+)/) || url.match(/id=([^&]+)/);
-            if (match) {
-                const id = match[1];
-                return `https://drive.google.com/uc?export=view&id=${id}`;
+            // 既に変換済み(thumbnail)ならそのまま
+            if (url.includes('drive.google.com/thumbnail')) return url;
+            
+            let id = '';
+            
+            // 1. URLからIDらしき部分を抽出
+            const parts = url.split(/\/file\/d\/|\/d\/|id=/);
+            
+            if (parts.length > 1) {
+                // 2. パラメータカット
+                id = parts[1].split(/[/?&]/)[0];
+                
+                // 3. IDの後ろの "view" 切り離し対策
+                if (id.endsWith('view')) {
+                    id = id.substring(0, id.length - 4);
+                }
+            }
+
+            if (id) {
+                // 【変更点】thumbnail APIを使用 (sz=w1000 は横幅1000px指定)
+                return `https://drive.google.com/thumbnail?id=${id}&sz=w1000`;
             }
             return url;
         };
