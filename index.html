@@ -8,11 +8,11 @@
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- 初期アイコン（後でJSで上書きされます） -->
+    <link rel="apple-touch-icon" id="app-icon" href="" />
     
     <style>
-        /* ブラウザ標準のプルリフレッシュを無効化 */
         body { overscroll-behavior-y: contain; }
-        
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
@@ -26,10 +26,18 @@
         .animate-blob { animation: blob 10s infinite; }
         .animation-delay-2000 { animation-delay: 2s; }
         .animation-delay-4000 { animation-delay: 4s; }
-        
-        /* 更新スピナーのアニメーション */
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .animate-spin-fast { animation: spin 0.7s linear infinite; }
+        /* Loading Text Animation */
+        @keyframes fadeText {
+            0% { opacity: 0; transform: translateY(5px); }
+            20% { opacity: 1; transform: translateY(0); }
+            80% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-5px); }
+        }
+        .animate-text-cycle {
+            animation: fadeText 2s ease-in-out forwards;
+        }
     </style>
 </head>
 <body>
@@ -39,36 +47,21 @@
         const { useState, useEffect, useRef } = React;
 
         // ==========================================
-        //  ここにGASのウェブアプリURLを貼り付けてください
+        //  設定
         // ==========================================
         const GAS_API_URL = "https://script.google.com/macros/s/AKfycby7BcugkEngRyjAM5Gkhs_csL0Ei6ngLK7B0KB0u5atQ1vmp-4y6JoeJEDZJAZpN9P0cA/exec"; 
+        const GITHUB_REPO = "nokidochibi/noki-lab"; // GitHubのリポジトリ (ユーザー名/リポジトリ名)
 
-        // --- Google Drive URL Converter (最強版) ---
-        // lh3.googleusercontent.com 経由で読み込むことで表示確率を上げます
+        // --- Google Drive URL Converter (Standard) ---
         const convertDriveUrl = (url) => {
             if (!url) return '';
-            // 既に変換済みならそのまま
-            if (url.includes('lh3.googleusercontent.com')) return url;
+            if (url.includes('export=view')) return url;
             
-            // ID抽出パターン
-            const patterns = [
-                /\/file\/d\/([^\/]+)/,
-                /id=([a-zA-Z0-9_-]+)/,
-                /\/d\/([^\/]+)/
-            ];
-
-            let id = null;
-            for (let pattern of patterns) {
-                const match = url.match(pattern);
-                if (match) {
-                    id = match[1];
-                    break;
-                }
-            }
-
-            if (id) {
-                // こちらの形式の方が安定して表示されます
-                return `https://lh3.googleusercontent.com/d/${id}`;
+            // ID抽出 (標準的なパターンのみ)
+            const match = url.match(/\/file\/d\/([^\/]+)/) || url.match(/\/d\/([^\/]+)/) || url.match(/id=([^&]+)/);
+            if (match) {
+                const id = match[1];
+                return `https://drive.google.com/uc?export=view&id=${id}`;
             }
             return url;
         };
@@ -83,8 +76,10 @@
         const FlaskConical = ({ size = 14, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/></svg>);
         const Check = ({ size = 14, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="20 6 9 17 4 12"/></svg>);
         const RefreshCw = ({ size = 14, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>);
+        const GitCommit = ({ size = 14, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="4"/><line x1="1.05" x2="8" y1="12" y2="12"/><line x1="16" x2="22.95" y1="12" y2="12"/></svg>);
+        const XCircle = ({ size = 14, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><line x1="15" x2="9" y1="9" y2="15"/><line x1="9" x2="15" y1="9" y2="15"/></svg>);
 
-        // --- Initial Mock Data ---
+        // --- Mock Data ---
         const mockData = [
             { category: 'Prifile', pickup: '-', imageUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=1000&auto=format&fit=crop', name: 'のき 🌳', message: 'GithubPagesとGASでアプリ開発中 🧪', appUrl: '-' },
             { category: 'X', pickup: '-', imageUrl: '', name: '-', message: '-', appUrl: 'https://twitter.com' },
@@ -94,6 +89,40 @@
             { category: 'aiko関連', pickup: '1', imageUrl: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=800&auto=format&fit=crop', name: 'Love Like Data Base', message: 'aikoの楽曲データベース', appUrl: '#' },
             { category: 'その他', pickup: '1', imageUrl: 'https://images.unsplash.com/photo-1555212697-194d092e3b8f?q=80&w=800&auto=format&fit=crop', name: '部屋の中の女の子', message: 'AR探索ゲーム', appUrl: '#' },
         ];
+
+        // --- Loading Component ---
+        const LoadingScreen = () => {
+            const messages = [
+                "Loading...",
+                "それまで気長に待つとしようか",
+                "十年でも",
+                "二十年でも",
+                "ずっとずっとずっと",
+                "待ちましょう"
+            ];
+            const [index, setIndex] = useState(0);
+
+            useEffect(() => {
+                const interval = setInterval(() => {
+                    setIndex((prev) => (prev + 1) % messages.length);
+                }, 2000);
+                return () => clearInterval(interval);
+            }, []);
+
+            return (
+                <div className="flex flex-col h-screen items-center justify-center bg-[#faf9f6] text-stone-500">
+                    <div className="mb-4">
+                        <FlaskConical size={32} className="text-rose-400 animate-bounce" />
+                    </div>
+                    <div className="h-6 overflow-hidden relative w-full text-center">
+                        {/* Keyを変えることでアニメーションをリセットさせて再実行させる */}
+                        <p key={index} className="text-sm font-medium animate-text-cycle absolute w-full left-0">
+                            {messages[index]}
+                        </p>
+                    </div>
+                </div>
+            );
+        };
 
         const App = () => {
             const [loading, setLoading] = useState(true);
@@ -105,13 +134,17 @@
             const [activeTab, setActiveTab] = useState('');
             const [copied, setCopied] = useState(false);
             
+            // Commit Modal State
+            const [showCommit, setShowCommit] = useState(false);
+            const [commitData, setCommitData] = useState(null);
+            const [commitLoading, setCommitLoading] = useState(false);
+
             // Pull to Refresh State
             const [pullStartY, setPullStartY] = useState(0);
             const [pullDistance, setPullDistance] = useState(0);
             const [isRefreshing, setIsRefreshing] = useState(false);
-            const contentRef = useRef(null);
 
-            // Data Fetching Logic
+            // --- Fetch Logic ---
             const fetchSheetData = async () => {
                 let rawData = mockData;
                 if (GAS_API_URL) {
@@ -128,10 +161,32 @@
                 processData(rawData);
             };
 
+            const fetchCommitData = async () => {
+                setCommitLoading(true);
+                try {
+                    const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/commits?per_page=1`);
+                    if (res.ok) {
+                        const json = await res.json();
+                        if (json && json.length > 0) {
+                            setCommitData({
+                                message: json[0].commit.message,
+                                date: new Date(json[0].commit.author.date).toLocaleString('ja-JP'),
+                                author: json[0].commit.author.name,
+                                url: json[0].html_url
+                            });
+                        }
+                    }
+                } catch (e) {
+                    console.error("GitHub API Error", e);
+                }
+                setCommitLoading(false);
+            };
+
             useEffect(() => {
                 const init = async () => {
                     await fetchSheetData();
-                    setLoading(false);
+                    // ローディング演出を見せたいので少しウェイトを入れる
+                    setTimeout(() => setLoading(false), 2000); 
                 };
                 init();
             }, []);
@@ -152,6 +207,12 @@
                     if (isAppSection) { tempApps.push(cleanRow); } else { tempSocials.push(cleanRow); }
                 });
 
+                // プロフィール画像が見つかったら、アプリアイコンとして設定
+                if (tempProfile && tempProfile.imageUrl) {
+                    const iconLink = document.getElementById('app-icon');
+                    if (iconLink) iconLink.href = tempProfile.imageUrl;
+                }
+
                 const tempPickups = tempApps.filter(d => String(d.pickup) === '1');
                 const uniqueCategories = [...new Set(tempApps.map(app => app.category))];
 
@@ -164,12 +225,7 @@
             };
 
             // --- Pull to Refresh Handlers ---
-            const handleTouchStart = (e) => {
-                if (window.scrollY === 0 && !isRefreshing) {
-                    setPullStartY(e.touches[0].clientY);
-                }
-            };
-
+            const handleTouchStart = (e) => { if (window.scrollY === 0 && !isRefreshing) setPullStartY(e.touches[0].clientY); };
             const handleTouchMove = (e) => {
                 if (pullStartY > 0 && window.scrollY === 0 && !isRefreshing) {
                     const currentY = e.touches[0].clientY;
@@ -180,7 +236,6 @@
                     }
                 }
             };
-
             const handleTouchEnd = async () => {
                 if (!isRefreshing && pullDistance > 60) {
                     setIsRefreshing(true);
@@ -225,7 +280,12 @@
                 }
             };
 
-            if (loading) return <div className="flex h-screen items-center justify-center text-stone-400">Loading...</div>;
+            const handleProfileClick = () => {
+                setShowCommit(true);
+                fetchCommitData();
+            };
+
+            if (loading) return <LoadingScreen />;
             if (!profile) return <div className="flex h-screen items-center justify-center text-stone-400">Data Error</div>;
 
             const displayedApps = apps.filter(app => app.category === activeTab);
@@ -262,7 +322,8 @@
                         style={{ transform: `translateY(${pullDistance * 0.3}px)` }} 
                     >
                         <header className="sticky top-0 z-50 px-4 flex flex-row items-center gap-3 border-b border-stone-100 bg-white/80 backdrop-blur-xl transition-all h-[56px]">
-                            <div className="relative group shrink-0">
+                            {/* Profile Icon with Click Event */}
+                            <div className="relative group shrink-0 cursor-pointer active:scale-95 transition-transform" onClick={handleProfileClick}>
                                 <div className="absolute -inset-1 bg-gradient-to-tr from-rose-200 to-amber-200 rounded-full opacity-0 group-hover:opacity-100 transition duration-500 blur-[4px]"></div>
                                 <img src={profile.imageUrl} alt={profile.name} className="relative w-9 h-9 rounded-full object-cover ring-2 ring-white shadow-sm" referrerPolicy="no-referrer" />
                             </div>
@@ -341,6 +402,40 @@
                         </section>
                         
                         <footer className="mt-auto text-center text-[10px] text-stone-400 pb-8 pt-12"><p>© {new Date().getFullYear()} NOKI LAB</p></footer>
+                    
+                        {/* --- Commit Log Modal --- */}
+                        {showCommit && (
+                            <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 animate-fadeIn">
+                                <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setShowCommit(false)}></div>
+                                <div className="relative w-full max-w-xs bg-white rounded-2xl p-5 shadow-2xl">
+                                    <button onClick={() => setShowCommit(false)} className="absolute top-3 right-3 p-1 rounded-full hover:bg-stone-100 text-stone-400">
+                                        <XCircle size={20} />
+                                    </button>
+                                    
+                                    <div className="flex items-center gap-2 mb-3 text-stone-800">
+                                        <GitCommit size={18} className="text-rose-400" />
+                                        <h3 className="font-bold text-sm">Latest Update</h3>
+                                    </div>
+
+                                    {commitLoading ? (
+                                        <div className="py-8 text-center text-xs text-stone-400">Loading commit log...</div>
+                                    ) : commitData ? (
+                                        <div className="text-xs text-stone-600">
+                                            <p className="mb-2 font-bold leading-relaxed">{commitData.message}</p>
+                                            <div className="flex flex-col gap-1 text-[10px] text-stone-400 mt-3 pt-3 border-t border-stone-100">
+                                                <span>📅 {commitData.date}</span>
+                                                <span>👤 {commitData.author}</span>
+                                            </div>
+                                            <a href={commitData.url} target="_blank" rel="noopener noreferrer" className="block mt-3 text-center py-2 bg-stone-100 rounded-lg text-[10px] font-bold text-stone-600 hover:bg-stone-200 transition">
+                                                GitHubで見る
+                                            </a>
+                                        </div>
+                                    ) : (
+                                        <div className="py-4 text-center text-xs text-stone-400">Log not found.</div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             );
