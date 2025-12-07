@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>のき🌳ラボ</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -10,6 +10,9 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
     <style>
+        /* ブラウザ標準のプルリフレッシュを無効化 */
+        body { overscroll-behavior-y: contain; }
+        
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
@@ -23,13 +26,17 @@
         .animate-blob { animation: blob 10s infinite; }
         .animation-delay-2000 { animation-delay: 2s; }
         .animation-delay-4000 { animation-delay: 4s; }
+        
+        /* 更新スピナーのアニメーション */
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .animate-spin-fast { animation: spin 0.7s linear infinite; }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useRef } = React;
 
         // ==========================================
         //  ここにGASのウェブアプリURLを貼り付けてください
@@ -37,33 +44,16 @@
         const GAS_API_URL = "https://script.google.com/macros/s/AKfycby7BcugkEngRyjAM5Gkhs_csL0Ei6ngLK7B0KB0u5atQ1vmp-4y6JoeJEDZJAZpN9P0cA/exec"; 
 
         // --- Google Drive URL Converter ---
-        // GoogleドライブのURLを直接表示可能なURLに変換する魔法の関数
         const convertDriveUrl = (url) => {
             if (!url) return '';
-            // すでに変換済みならそのまま返す
             if (url.includes('googleusercontent.com') || url.includes('export=view')) return url;
-            
-            // IDを抽出するパターン
-            const patterns = [
-                /\/file\/d\/([^\/]+)/,
-                /id=([^&]+)/,
-                /\/d\/([^\/]+)/
-            ];
-
+            const patterns = [/\/file\/d\/([^\/]+)/, /id=([^&]+)/, /\/d\/([^\/]+)/];
             let id = null;
             for (let pattern of patterns) {
                 const match = url.match(pattern);
-                if (match) {
-                    id = match[1];
-                    break;
-                }
+                if (match) { id = match[1]; break; }
             }
-
-            if (id) {
-                // Google Driveの画像を直接表示するURL形式
-                return `https://drive.google.com/uc?export=view&id=${id}`;
-            }
-            return url; // ドライブ以外ならそのまま返す
+            return id ? `https://drive.google.com/uc?export=view&id=${id}` : url;
         };
 
         // --- Icons ---
@@ -75,6 +65,7 @@
         const Share2 = ({ size = 14, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>);
         const FlaskConical = ({ size = 14, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/></svg>);
         const Check = ({ size = 14, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="20 6 9 17 4 12"/></svg>);
+        const RefreshCw = ({ size = 14, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>);
 
         // --- Initial Mock Data ---
         const mockData = [
@@ -96,25 +87,36 @@
             const [categories, setCategories] = useState([]); 
             const [activeTab, setActiveTab] = useState('');
             const [copied, setCopied] = useState(false);
+            
+            // Pull to Refresh State
+            const [pullStartY, setPullStartY] = useState(0);
+            const [pullDistance, setPullDistance] = useState(0);
+            const [isRefreshing, setIsRefreshing] = useState(false);
+            const contentRef = useRef(null);
+
+            // Data Fetching Logic
+            const fetchSheetData = async () => {
+                let rawData = mockData;
+                if (GAS_API_URL) {
+                    try {
+                        const response = await fetch(GAS_API_URL);
+                        const json = await response.json();
+                        if (json && json.length > 0) {
+                            rawData = json;
+                        }
+                    } catch (error) {
+                        console.error("GAS取得エラー", error);
+                    }
+                }
+                processData(rawData);
+            };
 
             useEffect(() => {
-                const fetchData = async () => {
-                    let rawData = mockData;
-                    if (GAS_API_URL) {
-                        try {
-                            const response = await fetch(GAS_API_URL);
-                            const json = await response.json();
-                            if (json && json.length > 0) {
-                                rawData = json;
-                            }
-                        } catch (error) {
-                            console.error("GAS取得エラー", error);
-                        }
-                    }
-                    processData(rawData);
+                const init = async () => {
+                    await fetchSheetData();
                     setLoading(false);
                 };
-                fetchData();
+                init();
             }, []);
 
             const processData = (rawData) => {
@@ -125,24 +127,14 @@
                 let tempProfile = null;
 
                 rawData.forEach(row => {
-                    // ここで画像URLを自動変換！
                     const cleanRow = { ...row, imageUrl: convertDriveUrl(row.imageUrl) };
-
                     if (cleanRow.category === 'Prifile' || cleanRow.category === 'Profile') {
-                        tempProfile = cleanRow;
-                        return;
+                        tempProfile = cleanRow; return;
                     }
-                    if (cleanRow.category === APP_SECTION_START_KEY) {
-                        isAppSection = true;
-                    }
-                    if (isAppSection) {
-                        tempApps.push(cleanRow);
-                    } else {
-                        tempSocials.push(cleanRow);
-                    }
+                    if (cleanRow.category === APP_SECTION_START_KEY) { isAppSection = true; }
+                    if (isAppSection) { tempApps.push(cleanRow); } else { tempSocials.push(cleanRow); }
                 });
 
-                // Pickupフィルタリング
                 const tempPickups = tempApps.filter(d => String(d.pickup) === '1');
                 const uniqueCategories = [...new Set(tempApps.map(app => app.category))];
 
@@ -151,9 +143,46 @@
                 setApps(tempApps);
                 setPickups(tempPickups);
                 setCategories(uniqueCategories);
-                
-                if (!activeTab && uniqueCategories.length > 0) {
-                    setActiveTab(uniqueCategories[0]);
+                if (!activeTab && uniqueCategories.length > 0) setActiveTab(uniqueCategories[0]);
+            };
+
+            // --- Pull to Refresh Handlers ---
+            const handleTouchStart = (e) => {
+                if (window.scrollY === 0 && !isRefreshing) {
+                    setPullStartY(e.touches[0].clientY);
+                }
+            };
+
+            const handleTouchMove = (e) => {
+                if (pullStartY > 0 && window.scrollY === 0 && !isRefreshing) {
+                    const currentY = e.touches[0].clientY;
+                    const diff = currentY - pullStartY;
+                    if (diff > 0) {
+                        // 少し抵抗をつける（0.4倍）
+                        setPullDistance(diff * 0.4); 
+                        // ネイティブのスクロールを抑制（場合によるが今回はアプリ感を出すため）
+                        if (e.cancelable) e.preventDefault();
+                    }
+                }
+            };
+
+            const handleTouchEnd = async () => {
+                if (!isRefreshing && pullDistance > 60) {
+                    // 更新開始
+                    setIsRefreshing(true);
+                    setPullDistance(60); // インジケータを表示位置で固定
+                    await fetchSheetData(); // データ再取得
+                    
+                    // 少し待ってから戻す（完了感の演出）
+                    setTimeout(() => {
+                        setIsRefreshing(false);
+                        setPullDistance(0);
+                        setPullStartY(0);
+                    }, 800);
+                } else {
+                    // 更新せずに戻す
+                    setPullDistance(0);
+                    setPullStartY(0);
                 }
             };
 
@@ -191,14 +220,38 @@
             const displayedApps = apps.filter(app => app.category === activeTab);
 
             return (
-                <div className="min-h-screen bg-[#faf9f6] font-sans text-stone-600 selection:bg-rose-200 selection:text-rose-900">
+                <div 
+                    className="min-h-screen bg-[#faf9f6] font-sans text-stone-600 selection:bg-rose-200 selection:text-rose-900"
+                    onTouchStart={handleTouchStart}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={handleTouchEnd}
+                >
+                    {/* Background Ambience */}
                     <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
                         <div className="absolute -top-20 -left-20 w-96 h-96 bg-rose-200/40 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-blob"></div>
                         <div className="absolute top-0 -right-20 w-96 h-96 bg-amber-100/60 rounded-full mix-blend-multiply filter blur-3xl opacity-60 animate-blob animation-delay-2000"></div>
                         <div className="absolute -bottom-32 left-20 w-96 h-96 bg-blue-100/50 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-blob animation-delay-4000"></div>
                     </div>
 
-                    <div className="relative z-10 max-w-md mx-auto min-h-screen flex flex-col pb-6 shadow-xl shadow-stone-200/50 bg-white/40 backdrop-blur-md border-x border-white/50">
+                    {/* Pull to Refresh Indicator */}
+                    <div 
+                        className="fixed top-0 left-0 right-0 z-[60] flex justify-center pointer-events-none transition-all duration-300 ease-out"
+                        style={{ 
+                            transform: `translateY(${pullDistance > 0 ? pullDistance - 40 : -40}px)`,
+                            opacity: pullDistance > 0 ? 1 : 0
+                        }}
+                    >
+                        <div className={`w-8 h-8 rounded-full bg-white shadow-md flex items-center justify-center border border-rose-100 ${isRefreshing ? 'animate-spin-fast' : ''} transition-transform duration-300`}
+                             style={{ transform: !isRefreshing && pullDistance < 60 ? `rotate(${pullDistance * 5}deg)` : '' }}
+                        >
+                            <RefreshCw size={16} className={`text-rose-400 ${isRefreshing ? '' : ''}`} />
+                        </div>
+                    </div>
+
+                    <div 
+                        className="relative z-10 max-w-md mx-auto min-h-screen flex flex-col pb-6 shadow-xl shadow-stone-200/50 bg-white/40 backdrop-blur-md border-x border-white/50 transition-transform duration-300 ease-out"
+                        style={{ transform: `translateY(${pullDistance * 0.3}px)` }} 
+                    >
                         <header className="sticky top-0 z-50 px-4 flex flex-row items-center gap-3 border-b border-stone-100 bg-white/80 backdrop-blur-xl transition-all h-[56px]">
                             <div className="relative group shrink-0">
                                 <div className="absolute -inset-1 bg-gradient-to-tr from-rose-200 to-amber-200 rounded-full opacity-0 group-hover:opacity-100 transition duration-500 blur-[4px]"></div>
@@ -262,7 +315,7 @@
                                 {displayedApps.map((app, idx) => (
                                     <a key={`${activeTab}-${idx}`} href={app.appUrl} target="_blank" rel="noopener noreferrer" className="group relative flex flex-col bg-white rounded-xl overflow-hidden border border-stone-100 shadow-sm hover:shadow-md hover:border-rose-200 transition-all duration-300 active:scale-95 animate-fadeIn">
                                         <div className="aspect-[16/9] w-full overflow-hidden bg-stone-100 relative">
-                                            <img src={app.imageUrl} alt={app.name} className="w-full h-full object-cover transition duration-500 group-hover:scale-110" />
+                                            <img src={app.imageUrl} alt={app.name} className="w-full h-full object-cover transition duration-500 group-hover:scale-105" />
                                             <div className="absolute inset-0 bg-rose-500/0 group-hover:bg-rose-500/10 transition duration-300"></div>
                                         </div>
                                         <div className="p-3 flex flex-col flex-1 bg-white">
