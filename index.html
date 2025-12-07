@@ -52,8 +52,14 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
+        // ==========================================
+        //  ここにGASのウェブアプリURLを貼り付けてください
+        // ==========================================
+        const GAS_API_URL = "https://script.google.com/macros/s/AKfycby7BcugkEngRyjAM5Gkhs_csL0Ei6ngLK7B0KB0u5atQ1vmp-4y6JoeJEDZJAZpN9P0cA/exec"; 
+        // 例: "https://script.google.com/macros/s/xxxxx/exec"
+
+
         // --- アイコンコンポーネント (Lucide & Custom) ---
-        // 外部読み込みのエラーを防ぐため、ここで直接定義しています
         const XIcon = ({ size = 14, className }) => (
             <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} xmlns="http://www.w3.org/2000/svg"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.45-6.231h.001Zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
         );
@@ -79,38 +85,53 @@
             <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="20 6 9 17 4 12"/></svg>
         );
 
-        // --- データのモック ---
+        // --- モックデータ (GAS接続前の表示用) ---
         const mockData = [
-            // A列:カテゴリ, B:Pickup, C:画像URL, D:名前, E:メッセージ, F:アプリURL
             { category: 'Prifile', pickup: '-', imageUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=1000&auto=format&fit=crop', name: 'のき 🌳', message: 'GithubPagesとGASでアプリ開発中 🧪', appUrl: '-' },
             { category: 'X', pickup: '-', imageUrl: '', name: '-', message: '-', appUrl: 'https://twitter.com' },
             { category: 'Tiktok', pickup: '-', imageUrl: '', name: '-', message: '-', appUrl: 'https://tiktok.com' },
             { category: 'instagram', pickup: '-', imageUrl: '', name: '-', message: '-', appUrl: 'https://instagram.com' },
             { category: 'ツイキャス', pickup: '-', imageUrl: '', name: '-', message: '-', appUrl: 'https://twitcasting.tv' },
-            
-            // アプリデータ
             { category: 'aiko関連', pickup: '1', imageUrl: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=800&auto=format&fit=crop', name: 'Love Like Data Base', message: 'aikoの楽曲データベース', appUrl: '#' },
             { category: 'aiko関連', pickup: '1', imageUrl: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=800&auto=format&fit=crop', name: 'aikoのCD/ライブマップ', message: '思い出を巡る旅へ', appUrl: '#' },
-            { category: 'aiko関連', pickup: '', imageUrl: 'https://images.unsplash.com/photo-1493225255756-d9584f8606e9?q=80&w=800&auto=format&fit=crop', name: '今日の自分はいつのaiko？', message: '日替わり診断', appUrl: '#' },
-            { category: 'aiko関連', pickup: '', imageUrl: 'https://images.unsplash.com/photo-1516280440614-6697288d5d38?q=80&w=800&auto=format&fit=crop', name: 'aikoのこの歌詞なんだっけ', message: '歌詞検索ツール', appUrl: '#' },
-            { category: 'aiko関連', pickup: '1', imageUrl: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?q=80&w=800&auto=format&fit=crop', name: '伸びろ！推しaV', message: '動画再生支援ツール', appUrl: '#' },
-            { category: 'aiko関連', pickup: '', imageUrl: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=800&auto=format&fit=crop', name: 'ラッキーフレーズ 🥤', message: '今日の運勢は？', appUrl: '#' },
-            { category: 'aiko関連', pickup: '', imageUrl: 'https://images.unsplash.com/photo-1460723237483-7a6dc9d0b212?q=80&w=800&auto=format&fit=crop', name: 'わたしとaikoのヒストリー', message: '年表作成アプリ', appUrl: '#' },
             { category: 'その他', pickup: '1', imageUrl: 'https://images.unsplash.com/photo-1555212697-194d092e3b8f?q=80&w=800&auto=format&fit=crop', name: '部屋の中の女の子', message: 'AR探索ゲーム', appUrl: '#' },
         ];
 
         const App = () => {
+            const [data, setData] = useState([]);
+            const [loading, setLoading] = useState(true);
             const [profile, setProfile] = useState(null);
             const [socials, setSocials] = useState([]);
             const [pickups, setPickups] = useState([]);
             const [apps, setApps] = useState([]);
             const [categories, setCategories] = useState([]); 
             const [activeTab, setActiveTab] = useState('');
-            
             const [copied, setCopied] = useState(false);
 
             useEffect(() => {
-                const rawData = mockData;
+                const fetchData = async () => {
+                    let rawData = mockData;
+                    
+                    if (GAS_API_URL) {
+                        try {
+                            const response = await fetch(GAS_API_URL);
+                            const json = await response.json();
+                            if (json && json.length > 0) {
+                                rawData = json;
+                            }
+                        } catch (error) {
+                            console.error("GAS取得エラー: モックデータを使用します", error);
+                        }
+                    }
+
+                    processData(rawData);
+                    setLoading(false);
+                };
+
+                fetchData();
+            }, []);
+
+            const processData = (rawData) => {
                 const APP_SECTION_START_KEY = 'aiko関連';
                 
                 let isAppSection = false;
@@ -142,10 +163,11 @@
                 setPickups(tempPickups);
                 setCategories(uniqueCategories);
                 
-                if (uniqueCategories.length > 0) {
+                // タブの状態がまだない場合のみ初期化（タブ切り替えリセット防止）
+                if (!activeTab && uniqueCategories.length > 0) {
                     setActiveTab(uniqueCategories[0]);
                 }
-            }, []);
+            };
 
             const getSocialIcon = (category) => {
                 switch (category.toLowerCase()) {
@@ -189,7 +211,8 @@
                 }
             };
 
-            if (!profile) return <div className="flex h-screen items-center justify-center text-stone-400">Loading...</div>;
+            if (loading) return <div className="flex h-screen items-center justify-center text-stone-400">Loading...</div>;
+            if (!profile) return <div className="flex h-screen items-center justify-center text-stone-400">Data Error</div>;
 
             return (
                 <div className="min-h-screen bg-[#faf9f6] font-sans text-stone-600 selection:bg-rose-200 selection:text-rose-900">
