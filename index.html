@@ -52,16 +52,31 @@
         const GAS_API_URL = "https://script.google.com/macros/s/AKfycby7BcugkEngRyjAM5Gkhs_csL0Ei6ngLK7B0KB0u5atQ1vmp-4y6JoeJEDZJAZpN9P0cA/exec"; 
         const GITHUB_REPO = "nokidochibi/noki-lab"; // GitHubのリポジトリ (ユーザー名/リポジトリ名)
 
-        // --- Google Drive URL Converter (Standard) ---
+        // --- Google Drive URL Converter (Super Strong Version) ---
+        // lh3.googleusercontent.com 経由で読み込みつつ、URLの破損(view連結)も自動修復します
         const convertDriveUrl = (url) => {
             if (!url) return '';
-            if (url.includes('export=view')) return url;
+            // 既に変換済みならそのまま
+            if (url.includes('lh3.googleusercontent.com')) return url;
             
-            // ID抽出 (標準的なパターンのみ)
-            const match = url.match(/\/file\/d\/([^\/]+)/) || url.match(/\/d\/([^\/]+)/) || url.match(/id=([^&]+)/);
-            if (match) {
-                const id = match[1];
-                return `https://drive.google.com/uc?export=view&id=${id}`;
+            let id = '';
+            
+            // 1. URLからIDらしき部分を抽出 (/file/d/〇〇, /d/〇〇, id=〇〇)
+            const parts = url.split(/\/file\/d\/|\/d\/|id=/);
+            
+            if (parts.length > 1) {
+                // 2. 後ろに続く余計なパラメータ(?や&や/)をカット
+                id = parts[1].split(/[/?&]/)[0];
+                
+                // 3. IDの後ろにスラッシュなしで "view" がくっついている場合 (例: ...MIGview) を切り離す
+                if (id.endsWith('view')) {
+                    id = id.substring(0, id.length - 4);
+                }
+            }
+
+            if (id) {
+                // Googleフォトサーバー経由のURLに変換 (これが強力なやつ)
+                return `https://lh3.googleusercontent.com/d/${id}`;
             }
             return url;
         };
