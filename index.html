@@ -43,17 +43,34 @@
         // ==========================================
         const GAS_API_URL = "https://script.google.com/macros/s/AKfycby7BcugkEngRyjAM5Gkhs_csL0Ei6ngLK7B0KB0u5atQ1vmp-4y6JoeJEDZJAZpN9P0cA/exec"; 
 
-        // --- Google Drive URL Converter ---
+        // --- Google Drive URL Converter (最強版) ---
+        // lh3.googleusercontent.com 経由で読み込むことで表示確率を上げます
         const convertDriveUrl = (url) => {
             if (!url) return '';
-            if (url.includes('googleusercontent.com') || url.includes('export=view')) return url;
-            const patterns = [/\/file\/d\/([^\/]+)/, /id=([^&]+)/, /\/d\/([^\/]+)/];
+            // 既に変換済みならそのまま
+            if (url.includes('lh3.googleusercontent.com')) return url;
+            
+            // ID抽出パターン
+            const patterns = [
+                /\/file\/d\/([^\/]+)/,
+                /id=([a-zA-Z0-9_-]+)/,
+                /\/d\/([^\/]+)/
+            ];
+
             let id = null;
             for (let pattern of patterns) {
                 const match = url.match(pattern);
-                if (match) { id = match[1]; break; }
+                if (match) {
+                    id = match[1];
+                    break;
+                }
             }
-            return id ? `https://drive.google.com/uc?export=view&id=${id}` : url;
+
+            if (id) {
+                // こちらの形式の方が安定して表示されます
+                return `https://lh3.googleusercontent.com/d/${id}`;
+            }
+            return url;
         };
 
         // --- Icons ---
