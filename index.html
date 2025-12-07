@@ -14,15 +14,16 @@
     <style>
         /* スクロール制御 */
         body { 
-            overscroll-behavior-y: none; /* ネイティブのバウンスを無効化 */
-            background-color: #faf9f6;
+            overscroll-behavior-y: none; 
+            background-color: #d8e2dc; /* Base: Sage Gray */
+            color: #2c3e35; /* Text: Deep Forest */
         }
         
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-fadeIn { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .animate-fadeIn { animation: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
         
         @keyframes blob {
             0% { transform: translate(0px, 0px) scale(1); }
@@ -30,14 +31,13 @@
             66% { transform: translate(-20px, 20px) scale(0.9); }
             100% { transform: translate(0px, 0px) scale(1); }
         }
-        .animate-blob { animation: blob 10s infinite; }
+        .animate-blob { animation: blob 15s infinite; }
         .animation-delay-2000 { animation-delay: 2s; }
         .animation-delay-4000 { animation-delay: 4s; }
         
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .animate-spin-fast { animation: spin 0.7s linear infinite; }
         
-        /* Loading Text Animation */
         @keyframes fadeText {
             0% { opacity: 0; transform: translateY(5px); }
             20% { opacity: 1; transform: translateY(0); }
@@ -61,30 +61,19 @@
         const GAS_API_URL = "https://script.google.com/macros/s/AKfycby7BcugkEngRyjAM5Gkhs_csL0Ei6ngLK7B0KB0u5atQ1vmp-4y6JoeJEDZJAZpN9P0cA/exec"; 
         const GITHUB_REPO = "nokidochibi/noki-lab";
 
-        // --- URL Converter (Thumbnail API Version) ---
-        // サムネイル生成APIを使用することで、最も安定して画像を表示させます
+        // --- URL Converter ---
         const convertDriveUrl = (url) => {
             if (!url) return '';
-            // 既に変換済み(thumbnail)ならそのまま
             if (url.includes('drive.google.com/thumbnail')) return url;
-            
             let id = '';
-            
-            // 1. URLからIDらしき部分を抽出
             const parts = url.split(/\/file\/d\/|\/d\/|id=/);
-            
             if (parts.length > 1) {
-                // 2. パラメータカット
                 id = parts[1].split(/[/?&]/)[0];
-                
-                // 3. IDの後ろの "view" 切り離し対策
                 if (id.endsWith('view')) {
                     id = id.substring(0, id.length - 4);
                 }
             }
-
             if (id) {
-                // 【変更点】thumbnail APIを使用 (sz=w1000 は横幅1000px指定)
                 return `https://drive.google.com/thumbnail?id=${id}&sz=w1000`;
             }
             return url;
@@ -134,9 +123,9 @@
             }, []);
 
             return (
-                <div className="flex flex-col h-screen items-center justify-center bg-[#faf9f6] text-stone-500">
+                <div className="flex flex-col h-screen items-center justify-center bg-[#d8e2dc] text-[#5c6e65]">
                     <div className="mb-4">
-                        <FlaskConical size={32} className="text-rose-400 animate-bounce" />
+                        <FlaskConical size={32} className="text-[#ce8888] animate-bounce" />
                     </div>
                     <div className="h-6 overflow-hidden relative w-full text-center px-4">
                         <p key={index} className="text-sm font-medium animate-text-cycle absolute w-full left-0">
@@ -187,7 +176,6 @@
             const fetchCommitData = async () => {
                 setCommitLoading(true);
                 try {
-                    // GitHub APIの代わりに、GAS経由で翻訳されたデータを取得する
                     const res = await fetch(`${GAS_API_URL}?type=commits&repo=${GITHUB_REPO}`);
                     if (res.ok) {
                         const json = await res.json();
@@ -228,7 +216,6 @@
                     if (isAppSection) { tempApps.push(cleanRow); } else { tempSocials.push(cleanRow); }
                 });
 
-                // Web Clip Icon Update
                 if (tempProfile && tempProfile.imageUrl) {
                     const iconLink = document.getElementById('app-icon');
                     if (iconLink) {
@@ -259,7 +246,6 @@
                     const diff = currentY - pullStartY;
                     if (diff > 0) {
                         setPullDistance(diff * 0.4); 
-                        // Chrome等でのプルリロード無効化はCSSのoverscroll-behaviorで制御
                     }
                 }
             };
@@ -279,6 +265,17 @@
                 }
             };
 
+            // --- Styling Constants ---
+            // 上品でスモーキーな配色パレット
+            const colors = {
+                textMain: 'text-[#2c3e35]', // 深い緑グレー
+                textSub: 'text-[#5c6e65]', // くすんだセージ
+                accentPink: 'text-[#ce8888]', // くすみローズ
+                bgDark: 'bg-[#2c3e35]', // ボタン等の濃い色
+                bgCard: 'bg-white/80', // カード背景（少し透過）
+                border: 'border-[#b8c2bc]', // 境界線
+            };
+
             const getSocialIcon = (category) => {
                 const c = category.toLowerCase();
                 if (c === 'x') return <XIcon size={12} />;
@@ -290,11 +287,11 @@
 
             const getSocialColor = (category) => {
                 const c = category.toLowerCase();
-                if (c === 'x') return 'bg-stone-800 text-white';
-                if (c === 'instagram') return 'bg-gradient-to-tr from-amber-200 via-rose-300 to-purple-300 text-white';
-                if (c === 'tiktok') return 'bg-stone-800 text-white';
-                if (c === 'ツイキャス') return 'bg-[#0295db] text-white';
-                return 'bg-stone-200 text-stone-600';
+                if (c === 'x') return 'bg-[#2c3e35] text-white';
+                if (c === 'instagram') return 'bg-gradient-to-tr from-[#ce8888] via-[#ce8888] to-[#9e8c8c] text-white'; // くすみピンクグラデ
+                if (c === 'tiktok') return 'bg-[#2c3e35] text-white';
+                if (c === 'ツイキャス') return 'bg-[#5c8b9e] text-white'; // くすみブルー
+                return 'bg-[#e5e7e5] text-[#5c6e65]';
             };
 
             const handleShare = async () => {
@@ -313,22 +310,23 @@
             };
 
             if (loading) return <LoadingScreen />;
-            if (!profile) return <div className="flex h-screen items-center justify-center text-stone-400">Data Error</div>;
+            if (!profile) return <div className="flex h-screen items-center justify-center text-[#5c6e65]">Data Error</div>;
 
             const displayedApps = apps.filter(app => app.category === activeTab);
 
             return (
                 <div 
-                    className="min-h-screen font-sans text-stone-600 selection:bg-rose-200 selection:text-rose-900"
+                    className="min-h-screen font-sans selection:bg-[#ce8888] selection:text-white"
+                    style={{ color: '#2c3e35' }} // Base text color
                     onTouchStart={handleTouchStart}
                     onTouchMove={handleTouchMove}
                     onTouchEnd={handleTouchEnd}
                 >
-                    {/* Background */}
+                    {/* Ambient Background Blobs */}
                     <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
-                        <div className="absolute -top-20 -left-20 w-96 h-96 bg-rose-200/40 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-blob"></div>
-                        <div className="absolute top-0 -right-20 w-96 h-96 bg-amber-100/60 rounded-full mix-blend-multiply filter blur-3xl opacity-60 animate-blob animation-delay-2000"></div>
-                        <div className="absolute -bottom-32 left-20 w-96 h-96 bg-blue-100/50 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-blob animation-delay-4000"></div>
+                        <div className="absolute -top-20 -left-20 w-96 h-96 bg-[#c1d3cd] rounded-full mix-blend-multiply filter blur-3xl opacity-60 animate-blob"></div>
+                        <div className="absolute top-0 -right-20 w-96 h-96 bg-[#e6d0d0] rounded-full mix-blend-multiply filter blur-3xl opacity-60 animate-blob animation-delay-2000"></div>
+                        <div className="absolute -bottom-32 left-20 w-96 h-96 bg-[#d0dbe6] rounded-full mix-blend-multiply filter blur-3xl opacity-60 animate-blob animation-delay-4000"></div>
                     </div>
 
                     {/* Refresh Indicator */}
@@ -339,30 +337,29 @@
                             opacity: pullDistance > 0 ? 1 : 0
                         }}
                     >
-                        <div className={`w-8 h-8 rounded-full bg-white shadow-md flex items-center justify-center border border-rose-100 ${isRefreshing ? 'animate-spin-fast' : ''} transition-transform duration-300`}
+                        <div className={`w-8 h-8 rounded-full bg-[#fdfcf8] shadow-md flex items-center justify-center border border-[#b8c2bc] ${isRefreshing ? 'animate-spin-fast' : ''} transition-transform duration-300`}
                              style={{ transform: !isRefreshing && pullDistance < 60 ? `rotate(${pullDistance * 5}deg)` : '' }}
                         >
-                            <RefreshCw size={16} className={`text-rose-400 ${isRefreshing ? '' : ''}`} />
+                            <RefreshCw size={16} className={`text-[#ce8888] ${isRefreshing ? '' : ''}`} />
                         </div>
                     </div>
 
                     <div 
-                        className="relative z-10 max-w-md mx-auto min-h-screen flex flex-col pb-6 shadow-xl shadow-stone-200/50 bg-white/40 backdrop-blur-md border-x border-white/50 transition-transform duration-300 ease-out"
+                        className="relative z-10 max-w-md mx-auto min-h-screen flex flex-col pb-6 shadow-xl shadow-[#a3aca7]/30 bg-[#fdfcf8]/30 backdrop-blur-md border-x border-white/20 transition-transform duration-300 ease-out"
                         style={{ transform: `translateY(${pullDistance * 0.3}px)` }} 
                     >
                         {/* Header */}
-                        <header className="sticky top-0 z-50 px-4 flex flex-row items-center gap-3 border-b border-stone-100 bg-white/80 backdrop-blur-xl transition-all h-[56px]">
+                        <header className="sticky top-0 z-50 px-4 flex flex-row items-center gap-3 border-b border-white/30 bg-[#fdfcf8]/80 backdrop-blur-xl transition-all h-[56px] shadow-sm">
                             <div className="relative group shrink-0 cursor-pointer active:scale-95 transition-transform" onClick={handleProfileClick}>
-                                <div className="absolute -inset-1 bg-gradient-to-tr from-rose-200 to-amber-200 rounded-full opacity-0 group-hover:opacity-100 transition duration-500 blur-[4px]"></div>
+                                <div className="absolute -inset-1 bg-gradient-to-tr from-[#a8b8b0] to-[#ce8888] rounded-full opacity-0 group-hover:opacity-100 transition duration-500 blur-[4px]"></div>
                                 <img src={profile.imageUrl} alt={profile.name} className="relative w-9 h-9 rounded-full object-cover ring-2 ring-white shadow-sm" referrerPolicy="no-referrer" />
                             </div>
                             <div className="flex-1 min-w-0 flex flex-col justify-center select-none pl-1">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-1.5">
-                                        <FlaskConical size={14} className="text-rose-400 fill-rose-100" />
-                                        <h1 className="text-sm font-bold tracking-wide text-stone-700">のきラボ</h1>
+                                        <FlaskConical size={14} className="text-[#ce8888] fill-[#f4eaea]" />
+                                        <h1 className="text-sm font-bold tracking-wide text-[#2c3e35]">のきラボ</h1>
                                     </div>
-                                    {/* SNS Links (Fix: Added z-index and click area) */}
                                     <div className="flex gap-2 relative z-10">
                                         {socials.map((sns, idx) => (
                                             <a key={idx} href={sns.appUrl || '#'} target="_blank" rel="noopener noreferrer" className={`rounded-full transition hover:scale-110 active:scale-95 flex items-center justify-center ${getSocialColor(sns.category)} opacity-90 hover:opacity-100 shadow-sm`} style={{ width: '22px', height: '22px' }}>
@@ -371,30 +368,28 @@
                                         ))}
                                     </div>
                                 </div>
-                                <p className="text-[10px] text-stone-400 truncate mt-0.5 leading-none">{profile.message}</p>
+                                <p className="text-[10px] text-[#5c6e65] truncate mt-0.5 leading-none">{profile.message}</p>
                             </div>
-                            <button onClick={handleShare} className="p-2 ml-1 rounded-full hover:bg-stone-100 transition-colors relative text-stone-400">
-                                {copied ? <Check size={20} className="text-green-500" /> : <Share2 size={20} />}
+                            <button onClick={handleShare} className="p-2 ml-1 rounded-full hover:bg-white/50 transition-colors relative text-[#5c6e65]">
+                                {copied ? <Check size={20} className="text-[#4a6b5d]" /> : <Share2 size={20} />}
                             </button>
                         </header>
 
-                        {/* Pickup Section (Design Changed) */}
+                        {/* Pickup Section */}
                         {pickups.length > 0 && (
                             <section className="mt-6 mb-2">
                                 <div className="flex overflow-x-auto px-4 pb-4 gap-4 snap-x snap-mandatory hide-scrollbar">
                                     {pickups.map((app, idx) => (
                                         <a key={idx} href={app.appUrl} target="_blank" rel="noopener noreferrer" className="snap-center shrink-0 w-[70vw] max-w-[280px] group block">
-                                            {/* 画像部分 */}
-                                            <div className="relative aspect-[3/4] overflow-hidden rounded-2xl shadow-sm border border-stone-200 bg-white transition-all duration-300 group-hover:shadow-md">
+                                            <div className="relative aspect-[3/4] overflow-hidden rounded-2xl shadow-md shadow-[#a3aca7]/30 border border-white/60 bg-white transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-lg">
                                                 <img src={app.imageUrl} alt={app.name} className="w-full h-full object-cover transition duration-700 group-hover:scale-105" referrerPolicy="no-referrer" />
                                                 <div className="absolute top-3 left-3">
-                                                    <span className="px-2.5 py-1 text-[10px] font-bold text-rose-600 bg-white/90 backdrop-blur-sm rounded-full shadow-sm">PICKUP</span>
+                                                    <span className="px-2.5 py-1 text-[10px] font-bold text-white bg-[#ce8888] backdrop-blur-sm rounded-full shadow-sm">PICKUP</span>
                                                 </div>
                                             </div>
-                                            {/* テキスト部分（画像の下に移動） */}
                                             <div className="pt-2 px-1">
-                                                <h3 className="text-sm font-bold text-stone-700 leading-tight mb-1 line-clamp-1 group-hover:text-rose-500 transition-colors">{app.name}</h3>
-                                                <p className="text-[10px] text-stone-400 line-clamp-1">{app.message}</p>
+                                                <h3 className="text-sm font-bold text-[#2c3e35] leading-tight mb-1 line-clamp-1 group-hover:text-[#ce8888] transition-colors">{app.name}</h3>
+                                                <p className="text-[10px] text-[#5c6e65] line-clamp-1">{app.message}</p>
                                             </div>
                                         </a>
                                     ))}
@@ -404,10 +399,10 @@
 
                         {/* App List */}
                         <section className="px-4 flex-1 flex flex-col">
-                            <div className="sticky top-[56px] z-40 bg-[#faf9f6]/95 backdrop-blur-xl -mx-4 px-4 py-3 mb-4 border-b border-stone-100/50">
+                            <div className="sticky top-[56px] z-40 bg-[#d8e2dc]/95 backdrop-blur-xl -mx-4 px-4 py-3 mb-4 border-b border-white/20">
                                 <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar">
                                     {categories.map((cat) => (
-                                        <button key={cat} onClick={() => setActiveTab(cat)} className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-300 border ${activeTab === cat ? 'bg-stone-700 text-white border-stone-700 shadow-md shadow-stone-200' : 'bg-white text-stone-500 border-stone-200 hover:bg-stone-100 hover:text-stone-600'}`}>
+                                        <button key={cat} onClick={() => setActiveTab(cat)} className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-300 border ${activeTab === cat ? 'bg-[#2c3e35] text-white shadow-md shadow-[#2c3e35]/20 border-transparent' : 'bg-white/60 text-[#5c6e65] border-white/40 hover:bg-white hover:text-[#2c3e35]'}`}>
                                             {cat}
                                         </button>
                                     ))}
@@ -416,51 +411,51 @@
 
                             <div className="grid grid-cols-2 gap-4 pb-12">
                                 {displayedApps.map((app, idx) => (
-                                    <a key={`${activeTab}-${idx}`} href={app.appUrl} target="_blank" rel="noopener noreferrer" className="group relative flex flex-col bg-white rounded-xl overflow-hidden border border-stone-100 shadow-sm hover:shadow-md hover:border-rose-200 transition-all duration-300 active:scale-95 animate-fadeIn">
-                                        <div className="aspect-[16/9] w-full overflow-hidden bg-stone-100 relative border-b border-stone-100">
+                                    <a key={`${activeTab}-${idx}`} href={app.appUrl} target="_blank" rel="noopener noreferrer" className="group relative flex flex-col bg-white/80 rounded-2xl overflow-hidden border border-white/60 shadow-sm shadow-[#a3aca7]/20 hover:shadow-md transition-all duration-300 active:scale-95 animate-fadeIn hover:-translate-y-1">
+                                        <div className="aspect-[16/9] w-full overflow-hidden bg-[#eff1ef] relative border-b border-white/50">
                                             <img src={app.imageUrl} alt={app.name} className="w-full h-full object-cover transition duration-500 group-hover:scale-105" referrerPolicy="no-referrer" />
-                                            <div className="absolute inset-0 bg-rose-500/0 group-hover:bg-rose-500/10 transition duration-300"></div>
+                                            <div className="absolute inset-0 bg-[#ce8888]/0 group-hover:bg-[#ce8888]/5 transition duration-300"></div>
                                         </div>
-                                        <div className="p-3 flex flex-col flex-1 bg-white">
-                                            <h3 className="text-xs font-bold text-stone-700 line-clamp-2 mb-1 group-hover:text-rose-500 transition-colors">{app.name}</h3>
-                                            <p className="text-[10px] text-stone-400 line-clamp-2 mt-auto">{app.message}</p>
+                                        <div className="p-3 flex flex-col flex-1 bg-white/80">
+                                            <h3 className="text-xs font-bold text-[#2c3e35] line-clamp-2 mb-1 group-hover:text-[#ce8888] transition-colors">{app.name}</h3>
+                                            <p className="text-[10px] text-[#5c6e65] line-clamp-2 mt-auto">{app.message}</p>
                                         </div>
-                                        <div className="absolute top-2 right-2 bg-white/80 backdrop-blur-sm p-1 rounded-full opacity-0 group-hover:opacity-100 transition translate-y-1 group-hover:translate-y-0 shadow-sm text-stone-600">
+                                        <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm p-1 rounded-full opacity-0 group-hover:opacity-100 transition translate-y-1 group-hover:translate-y-0 shadow-sm text-[#5c6e65]">
                                             <ExternalLink size={10} />
                                         </div>
                                     </a>
                                 ))}
-                                {displayedApps.length === 0 && <div className="col-span-2 text-center py-12 text-stone-400 text-xs">No apps found.</div>}
+                                {displayedApps.length === 0 && <div className="col-span-2 text-center py-12 text-[#5c6e65] text-xs">No apps found.</div>}
                             </div>
                         </section>
                         
-                        <footer className="mt-auto text-center text-[10px] text-stone-400 pb-8 pt-12"><p>© {new Date().getFullYear()} NOKI LAB</p></footer>
+                        <footer className="mt-auto text-center text-[10px] text-[#5c6e65] pb-8 pt-12"><p>© {new Date().getFullYear()} NOKI LAB</p></footer>
                     
-                        {/* --- Commit Log Modal --- */}
+                        {/* Commit Log Modal */}
                         {showCommit && (
                             <div className="fixed inset-0 z-[70] flex items-start justify-center pt-32 px-4 pb-4 animate-fadeIn">
-                                <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setShowCommit(false)}></div>
-                                <div className="relative w-full max-w-xs bg-white rounded-2xl p-5 shadow-2xl">
-                                    <button onClick={() => setShowCommit(false)} className="absolute top-3 right-3 p-1 rounded-full hover:bg-stone-100 text-stone-400">
+                                <div className="absolute inset-0 bg-[#2c3e35]/30 backdrop-blur-sm" onClick={() => setShowCommit(false)}></div>
+                                <div className="relative w-full max-w-xs bg-[#fdfcf8] rounded-2xl p-5 shadow-2xl border border-white">
+                                    <button onClick={() => setShowCommit(false)} className="absolute top-3 right-3 p-1 rounded-full hover:bg-[#e5e7e5] text-[#5c6e65]">
                                         <XCircle size={20} />
                                     </button>
                                     
-                                    <div className="flex items-center gap-2 mb-3 text-stone-800">
-                                        <GitCommit size={18} className="text-rose-400" />
+                                    <div className="flex items-center gap-2 mb-3 text-[#2c3e35]">
+                                        <GitCommit size={18} className="text-[#ce8888]" />
                                         <h3 className="font-bold text-sm">最新の更新</h3>
                                     </div>
 
                                     {commitLoading ? (
-                                        <div className="py-8 text-center text-xs text-stone-400">読み込み中...</div>
+                                        <div className="py-8 text-center text-xs text-[#5c6e65]">読み込み中...</div>
                                     ) : commitData ? (
-                                        <div className="text-xs text-stone-600">
+                                        <div className="text-xs text-[#2c3e35]">
                                             <p className="mb-2 font-bold leading-relaxed">{commitData.message}</p>
-                                            <div className="flex flex-col gap-1 text-[10px] text-stone-400 mt-3 pt-3 border-t border-stone-100">
+                                            <div className="flex flex-col gap-1 text-[10px] text-[#5c6e65] mt-3 pt-3 border-t border-[#e5e7e5]">
                                                 <span>📅 {commitData.date}</span>
                                             </div>
                                         </div>
                                     ) : (
-                                        <div className="py-4 text-center text-xs text-stone-400">履歴が見つかりませんでした</div>
+                                        <div className="py-4 text-center text-xs text-[#5c6e65]">履歴が見つかりませんでした</div>
                                     )}
                                 </div>
                             </div>
