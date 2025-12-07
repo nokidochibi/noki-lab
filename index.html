@@ -14,7 +14,7 @@
     <style>
         /* スクロール制御 */
         body { 
-            overscroll-behavior-y: none; 
+            overscroll-behavior-y: none; /* ネイティブのバウンスを無効化 */
             background-color: #d8e2dc; /* Base: Sage Gray */
             color: #2c3e35; /* Text: Deep Forest */
         }
@@ -265,17 +265,6 @@
                 }
             };
 
-            // --- Styling Constants ---
-            // 上品でスモーキーな配色パレット
-            const colors = {
-                textMain: 'text-[#2c3e35]', // 深い緑グレー
-                textSub: 'text-[#5c6e65]', // くすんだセージ
-                accentPink: 'text-[#ce8888]', // くすみローズ
-                bgDark: 'bg-[#2c3e35]', // ボタン等の濃い色
-                bgCard: 'bg-white/80', // カード背景（少し透過）
-                border: 'border-[#b8c2bc]', // 境界線
-            };
-
             const getSocialIcon = (category) => {
                 const c = category.toLowerCase();
                 if (c === 'x') return <XIcon size={12} />;
@@ -399,10 +388,13 @@
 
                         {/* App List */}
                         <section className="px-4 flex-1 flex flex-col">
-                            <div className="sticky top-[56px] z-40 bg-[#d8e2dc]/95 backdrop-blur-xl -mx-4 px-4 py-3 mb-4 border-b border-white/20">
+                            {/* Tab Navigation Container 
+                                修正箇所: 背景色を透過なしの「#d8e2dc」に変更して、境界線をなくし、一体化させました。
+                            */}
+                            <div className="sticky top-[56px] z-40 bg-[#d8e2dc] -mx-4 px-4 py-3 mb-4">
                                 <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar">
                                     {categories.map((cat) => (
-                                        <button key={cat} onClick={() => setActiveTab(cat)} className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-300 border ${activeTab === cat ? 'bg-[#2c3e35] text-white shadow-md shadow-[#2c3e35]/20 border-transparent' : 'bg-white/60 text-[#5c6e65] border-white/40 hover:bg-white hover:text-[#2c3e35]'}`}>
+                                        <button key={cat} onClick={() => setActiveTab(cat)} className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-300 border ${activeTab === cat ? 'bg-[#ce8888] text-white shadow-md shadow-[#ce8888]/30 border-transparent' : 'bg-white/60 text-[#5c6e65] border-white/40 hover:bg-white hover:text-[#ce8888]'}`}>
                                             {cat}
                                         </button>
                                     ))}
